@@ -9,3 +9,6 @@ USART_VHDL - contains VHDL files that were used to model, a USART device in QUAR
 
 EOG_Report - pdf file containg all of the LTSpice simulation designs and resaults, Fusion 360 Electronics circut design and PCB modeling.
 All of the simulations, most of circut design and the whole PCB making process were done by me
+
+I2C_sensor - code files containing an nRF SDK application of a program reading temprature and pressure from a bmp280 Bosh sensor through a I2C interface
+using a nRF9160DK board
