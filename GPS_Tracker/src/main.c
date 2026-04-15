@@ -329,6 +329,7 @@ static int64_t gnss_start_time;
 static bool first_fix = false;
 static uint8_t gps_data[256] = {0}; //Buffer to hold the GPS data to be sent to the server
 static struct nrf_modem_gnss_pvt_data_frame pvt_data;
+K_SEM_DEFINE(gnss_fix_sem, 0, 1); //semaphore to wait for GNSS fix
 
 static void print_fix_data(struct nrf_modem_gnss_pvt_data_frame *pvt_data)
 {
@@ -388,6 +389,7 @@ static void gnss_event_handler(int event)
 		break;
 	case NRF_MODEM_GNSS_EVT_SLEEP_AFTER_FIX:
 		LOG_INF("GNSS enter sleep after fix");
+                k_sem_give(&gnss_fix_sem);
 		break;
 	default:
 		break;
@@ -430,14 +432,6 @@ static int gnss_init_and_start(void)
 
 static void button_handler(uint32_t button_state, uint32_t has_changed)
 {
-        if(k_uptime_get() - gnss_start_time > KEEP_ALIVE_INTERVAL){
-                LOG_INF("Reconecting to server");
-                if (server_connect() != 0) {
-                        LOG_INF("Failed to initialize client");
-                        return;
-                }
-                gnss_start_time = k_uptime_get();
-        }
 
 	if (has_changed & DK_BTN1_MSK && button_state & DK_BTN1_MSK) {
 		client_get_send();
@@ -482,6 +476,18 @@ int main(void)
 	}
 
         while(1) {
+                k_sem_take(&gnss_fix_sem, K_FOREVER);
+
+                if(k_uptime_get() - gnss_start_time > KEEP_ALIVE_INTERVAL){
+                        LOG_INF("Reconecting to server");
+                        if (server_connect() != 0) {
+                                LOG_ERR("Failed to initialize client");
+                                break;
+                        }
+                        gnss_start_time = k_uptime_get();
+                }
+
+                client_put_send(&gps_data, sizeof(gps_data));
 
                 recieved = recv(sock, coap_buf, sizeof(coap_buf), 0);
 
